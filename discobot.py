@@ -18,6 +18,9 @@ FU = 'fuck off'
 WHY = 'why the hell'
 WAKE = 'are you awake?'
 AWARE = 'are you aware?'
+HELP = 'help'
+ASSHOLE = 'you\'re an asshole'
+
 # instantiate Slack & Spotify clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 spotify = spotipy.Spotify()
@@ -36,16 +39,20 @@ def return_song(query):
     response = spotify.search(q=artist_name, limit=50)
     #print "\n The value of search_object is \n" + str(search_object)
     while response:
+
         tracks = response['tracks']
+        if tracks['items'] == []:
+            return False 
         for i, item in enumerate(tracks['items']):
             try:
-                print "The value of t['name'].lower()" + str(item['name']) + " while the name of the requested track is " + str(requested_track.lower())
-            except UnicodeEncodeError as e:
+                print "The value of items['name'].lower()" + str(item['name']) + " while the name of the requested track is " + str(requested_track.lower())
+            except (UnicodeEncodeError, spotipy.client.SpotifyException) as e:
+                print "Couldn't compare this song because it contained a unicode character. Fix this asshole."
                 pass
             if item['name'].lower() == requested_track.lower():
-                return item['external_urls']['spotify']
-        if tracks['next']:
-            response = spotify.next(tracks)
+                    return item['external_urls']['spotify']
+            if tracks['next']:
+                response = spotify.next(tracks)
 
     return False
 
@@ -80,6 +87,13 @@ def handle_command(command, channel):
     
     if command.startswith(AWARE):
                 response = "The fire is out. The master is in"
+
+    if command.startswith(HELP):
+                response = "I work like this: play song by artist. \n Pretty fucking simple. Oh yeah, I only support ASCII right now. lol"
+    
+    if command.startswith(ASSHOLE):
+                response = "And you're a prick, so suck a dick"
+
     
     slack_client.api_call("chat.postMessage", channel=channel,
                           text=response, as_user=True)
