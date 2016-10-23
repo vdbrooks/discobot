@@ -18,7 +18,7 @@ FU = 'fuck off'
 WHY = 'why the hell'
 WAKE = 'are you awake?'
 AWARE = 'are you aware?'
-# instantiate Slack & Twilio clients
+# instantiate Slack & Spotify clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 spotify = spotipy.Spotify()
 
@@ -32,11 +32,20 @@ def return_song(query):
     artist_name = query[1].strip()
     print "The requested track we heard was: " + str(requested_track)
     print "The requested artist we heard was: " + str(artist_name)
-    search_object = spotify.search(q=artist_name, limit=50)
-    for i, t in enumerate(search_object['tracks']['items']):
-        print t['name']
-        if t['name'].lower() == requested_track.lower():
-            return t['external_urls']['spotify']
+    
+    response = spotify.search(q=artist_name, limit=50)
+    #print "\n The value of search_object is \n" + str(search_object)
+    while response:
+        tracks = response['tracks']
+        for i, item in enumerate(tracks['items']):
+            try:
+                print "The value of t['name'].lower()" + str(item['name']) + " while the name of the requested track is " + str(requested_track.lower())
+            except UnicodeEncodeError as e:
+                pass
+            if item['name'].lower() == requested_track.lower():
+                return item['external_urls']['spotify']
+        if tracks['next']:
+            response = spotify.next(tracks)
 
     return False
 
