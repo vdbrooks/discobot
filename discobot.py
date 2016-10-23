@@ -25,37 +25,60 @@ ASSHOLE = 'you\'re an asshole'
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 spotify = spotipy.Spotify()
 
-def validate_play_command(command):
+def process_play_command(command):
     search_string = ((command.strip()).strip('play')).split("by")
     print "The search string we're returning is: " + str(search_string)
     return search_string
 
-def return_song(query):
-    requested_track = query[0].strip()
-    artist_name = query[1].strip()
-    print "The requested track we heard was: " + str(requested_track)
-    print "The requested artist we heard was: " + str(artist_name)
+def return_song(artist,requested_track):
+    #requested_track = query[0].strip()
+    #artist_name = query[1].strip()
+    try:
+        print "The requested track we heard was: " + unicode(requested_track)
+        print "The requested artist we heard was: " + unicode(artist['name'])
+    except Exception as e:
+        print "Ran into the following error: " + str(e)
+        return False 
     
-    response = spotify.search(q=artist_name, limit=50)
+    response = spotify.search(q=artist['name'], limit=50)
     #print "\n The value of search_object is \n" + str(search_object)
+
     while response:
+
 
         tracks = response['tracks']
         if tracks['items'] == []:
-            return False 
+            return False
         for i, item in enumerate(tracks['items']):
             try:
-                print "The value of items['name'].lower()" + str(item['name']) + " while the name of the requested track is " + str(requested_track.lower())
+                print "The value of items['name'].lower()" + unicode(item['name']) + " while the name of the requested track is " + unicode(requested_track.lower())
             except (UnicodeEncodeError, spotipy.client.SpotifyException) as e:
                 print "Couldn't compare this song because it contained a unicode character. Fix this asshole."
                 pass
-            if item['name'].lower() == requested_track.lower():
-                    return item['external_urls']['spotify']
+            if item['type'] == 'track' and item['name'].lower() == requested_track.lower():
+                for entry in item['artists']:
+                    if entry['id'] == artist['id']:
+                        return item['external_urls']['spotify']
             if tracks['next']:
                 response = spotify.next(tracks)
 
     return False
+ 
+def get_artist(name):
+    results = spotify.search(q='artist:' + name, type='artist')
+    items = results['artists']['items']
+    if len(items) > 0:
+        return items[0]
+    else:
+        return None
 
+def get_artist_name(query):
+    artist_name = query[1].strip()
+    return artist_name
+
+def get_requested_track(query):
+    requested_track = query[0].strip()
+    return requested_track
 
 
 
@@ -69,8 +92,10 @@ def handle_command(command, channel):
     response = "No compute."
 
     if command.startswith(PLAY):
-        query = validate_play_command(command)
-        song_url = return_song(query)
+        query = process_play_command(command)
+        artist = get_artist(get_artist_name(query))
+        requested_track = get_requested_track(query)
+        song_url = return_song(artist,requested_track)
         if song_url == False:
             response = "Sorry, I couldn't find that song. Huh, must be your own fault. Layer eight issue I'll assume"
         else:
@@ -89,7 +114,7 @@ def handle_command(command, channel):
                 response = "The fire is out. The master is in"
 
     if command.startswith(HELP):
-                response = "I work like this: play song by artist. \n Pretty fucking simple. Oh yeah, I only support ASCII right now. lol"
+                response = "\"Oh help me, help me!\" I'm a little fucking baby that needs help \nI work like this: play song by artist. \n Make sure you spell the artist and name perfectly correctly\n Pretty fucking simple. \n\n"
     
     if command.startswith(ASSHOLE):
                 response = "And you're a prick, so suck a dick"
