@@ -20,6 +20,7 @@ WAKE = 'are you awake?'
 AWARE = 'are you aware?'
 HELP = 'help'
 ASSHOLE = 'you\'re an asshole'
+VERSION = 'what version are you running'
 
 # instantiate Slack & Spotify clients
 slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
@@ -55,7 +56,7 @@ def return_song(artist,requested_track):
             except (UnicodeEncodeError, spotipy.client.SpotifyException) as e:
                 print "Couldn't compare this song because it contained a unicode character. Fix this asshole."
                 pass
-            if item['type'] == 'track' and item['name'].lower() == requested_track.lower():
+            if item['type'] == 'track' and requested_track.lower() in item['name'].lower():
                 for entry in item['artists']:
                     if entry['id'] == artist['id']:
                         return item['external_urls']['spotify']
@@ -112,6 +113,9 @@ def handle_command(command, channel):
     
     if command.startswith(AWARE):
                 response = "The fire is out. The master is in"
+
+    if command.startswith(VERSION):
+                response = "development-version-0.3"
 
     if command.startswith(HELP):
                 response = "\"Oh help me, help me!\" I'm a little fucking baby that needs help \nI work like this: play song by artist. \n Make sure you spell the artist and name perfectly correctly\n Pretty fucking simple. \n\n"
