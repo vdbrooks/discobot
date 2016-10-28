@@ -60,8 +60,8 @@ def return_song(artist,requested_track):
                 for entry in item['artists']:
                     if entry['id'] == artist['id']:
                         return item['external_urls']['spotify']
-            if tracks['next']:
-                response = spotify.next(tracks)
+        if tracks['next']:
+            response = spotify.next(tracks)
 
     return False
  
