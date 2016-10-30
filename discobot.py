@@ -11,7 +11,7 @@ logging.basicConfig(filename='.\discobot.log', format='%(levelname)s:%(asctime)s
 # starterbot's ID as an environment variable
 BOT_ID = os.environ.get("BOT_ID")
 
-# constants
+# Command CONSTANTS
 AT_BOT = "<@" + BOT_ID + ">"
 PLAY_SONG = "play song"
 PLAY_ALBUM = "play album"
@@ -28,7 +28,10 @@ slack_client = SlackClient(os.environ.get('SLACK_BOT_TOKEN'))
 spotify = spotipy.Spotify()
 
 def process_play_command(command):
-    search_string = ((command.strip()).strip('play')).split("by")
+    result = command.split('by')
+    song_name = result[0].split('play song')[1].strip()
+    artist_name = result[1].strip()
+    search_string = [song_name, artist_name]
     print "The search string we're returning is: " + str(search_string)
     return search_string
 
@@ -115,15 +118,11 @@ def show_artist_albums(artist):
         results = spotify.next(results)
         albums.extend(results['items'])
     print('Total albums:', len(albums))
-    #unique = set()  # skip duplicate albums
-    #for album in albums:
-    #    name = album['name']
-    #    if not name in unique:  
-    #        print(name)
-    #        unique.add(name)
-    #        show_album_tracks(album)
 
-    return albums
+    if albums:
+        return albums
+    else:
+        return False
 
 
 
@@ -137,9 +136,9 @@ def handle_command(command, channel):
     response = "No compute."
 
     if command.startswith(PLAY_SONG):
-        query = process_play_command(command)
-        artist = get_artist(get_artist_name(query))
-        requested_track = get_requested_track(query)
+        search_list = process_play_command(command)
+        artist = get_artist(get_artist_name(search_list))
+        requested_track = get_requested_track(search_list)
         song_url = return_song(artist,requested_track)
         if song_url == False:
             response = "Sorry, I couldn't find that song. Huh, must be your own fault. Layer eight issue I'll assume"
@@ -152,18 +151,11 @@ def handle_command(command, channel):
         print "\n Here is the contents of the artist object: \n" + str(artist)
         albums = show_artist_albums(artist)
         print "\n Here is the contents of the albums object: \n" + str(albums)
-        #response = albums[i]['name']
-        #sys.exit(0)
         album_url = get_requested_album(search_list, albums)
         if album_url == False:
             response = "Sorry, I couldn't find an album called " + unicode(search_list[0]) + " by the artist " + unicode(search_list[1])
         else:
             response = album_url
-        #song_url = return_song(artist,requested_track)
-        #if song_url == False:
-        #    response = "Sorry, I couldn't find that song. Huh, must be your own fault. Layer eight issue I'll assume"
-        #else:
-        #    response = song_url
 
     
     if command.startswith(FU):
