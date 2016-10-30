@@ -3,7 +3,7 @@ import time, logging
 from slackclient import SlackClient
 import spotipy
 
-#Configure logging
+#Configure logging -- there is no logging yet, fyi
 logging.basicConfig(filename='.\discobot.log', format='%(levelname)s:%(asctime)s %(message)s', \
                 datefmt='%m/%d/%Y %I:%M:%S %p',level=logging.DEBUG)
 
@@ -32,7 +32,6 @@ def process_play_command(command):
     song_name = result[0].split('play song')[1].strip()
     artist_name = result[1].strip()
     search_string = [song_name, artist_name]
-    print "The search string we're returning is: " + str(search_string)
     return search_string
 
 def process_album_command(command):
@@ -40,22 +39,17 @@ def process_album_command(command):
     album_name = result[0].split('play album')[1].strip()
     artist_name = result[1].strip()
     search_string = [album_name,artist_name]
-    print "The search string we're returning is: " + str(search_string)
     return search_string
 
 def return_song(artist,requested_track):
-    #requested_track = query[0].strip()
-    #artist_name = query[1].strip()
     try:
         print "The requested track we heard was: " + unicode(requested_track)
         print "The requested artist we heard was: " + unicode(artist['name'])
     except Exception as e:
         print "Ran into the following error: " + str(e)
         return False 
-    
+    count = 0
     response = spotify.search(q=artist['name'], limit=50)
-    #print "\n The value of search_object is \n" + str(search_object)
-
     while response:
 
 
@@ -64,7 +58,7 @@ def return_song(artist,requested_track):
             return False
         for i, item in enumerate(tracks['items']):
             try:
-                print "The value of items['name'].lower()" + unicode(item['name']) + " while the name of the requested track is " + unicode(requested_track.lower())
+                print "The value of items['name'].lower()" + unicode(item['name'].lower()) + " while the name of the requested track is " + unicode(requested_track.lower())
             except (UnicodeEncodeError, spotipy.client.SpotifyException) as e:
                 print "Couldn't compare this song because it contained a unicode character. Fix this asshole."
                 pass
@@ -72,8 +66,12 @@ def return_song(artist,requested_track):
                 for entry in item['artists']:
                     if entry['id'] == artist['id']:
                         return item['external_urls']['spotify']
+            count += 1
         if tracks['next']:
             response = spotify.next(tracks)
+        else:
+            message = [count,False]
+            return message
 
     return False
 
@@ -83,10 +81,7 @@ def get_requested_album(search_list,albums):
     try:
         requested_album = search_list[0]
         requested_artist = search_list[1]
-        print "The requested  album we heard was: " + unicode(search_list[0])
-        print "The requested artist we heard was: " + unicode(search_list[1])
     except Exception as e:
-        print "Ran into the following error: " + str(e)
         return False
 
     
@@ -121,7 +116,6 @@ def show_artist_albums(artist):
     while results['next']:
         results = spotify.next(results)
         albums.extend(results['items'])
-    print('Total albums:', len(albums))
 
     if albums:
         return albums
@@ -142,22 +136,25 @@ def handle_command(command, channel):
     if command.startswith(PLAY_SONG):
         search_list = process_play_command(command)
         artist = get_artist(get_artist_name(search_list))
-        requested_track = get_requested_track(search_list)
-        song_url = return_song(artist,requested_track)
-        if song_url == False:
-            response = "Sorry, I couldn't find that song. Huh, must be your own fault. Layer eight issue I'll assume"
+        print artist
+        if artist == None:
+            response = "There is no artist by the name of " + search_list[1] + "\n\n Please check your spelling and try again...dumb muther fucker"
         else:
-            response = song_url
+            requested_track = get_requested_track(search_list)
+            song_url = return_song(artist,requested_track)
+            print str(song_url[1])
+            if song_url[1] == False:
+                response = "Sorry, I couldn't find a song called " + unicode(search_list[0]) + " by an artist named " + unicode(search_list[1]) + "\n\n We checked over " + str(song_url[0]) + " songs but no luck" + "\n\n Please check that you spelled either the artist or song name correctly"
+            else:
+                response = song_url
 
     if command.startswith(PLAY_ALBUM):
         search_list = process_album_command(command)
         artist = get_artist(get_artist_name(search_list))
-        print "\n Here is the contents of the artist object: \n" + str(artist)
         albums = show_artist_albums(artist)
-        print "\n Here is the contents of the albums object: \n" + str(albums)
         album_url = get_requested_album(search_list, albums)
         if album_url == False:
-            response = "Sorry, I couldn't find an album called " + unicode(search_list[0]) + " by the artist " + unicode(search_list[1])
+            response = "Sorry, I couldn't find an album called " + unicode(search_list[0]) + " by the artist " + unicode(search_list[1]) + "\n\n please check that you spelled the album and/or artist name correctly"
         else:
             response = album_url
 
@@ -175,11 +172,11 @@ def handle_command(command, channel):
                 response = "The fire is out. The master is in"
 
     if command.startswith(VERSION):
-                response = "development-version-0.3"
+                response = "development-version-1.1 on EC2" 
 
     if command.startswith(HELP):
-        response = "\"Oh help me, help me!\" I'm a little fucking baby that needs help \nTo play a particular song use: @discobot play song_name by artist_name \n To play a particular album use: @discobot play album album_name by artist_name . \n Obviously, we're only able to play songs that actually exists in spotify\n\n"
-    
+        response = "\"Oh help me, help me!\" I'm a little fucking baby that needs help \n\n To play a particular song use: @discobot play song_name by artist_name \n\n To play a particular album use: @discobot play album album_name by artist_name . \n\n Obviously, we're only able to play songs that actually exists in spotify\n\n"  
+  
     if command.startswith(ASSHOLE):
                 response = "And you're a prick, so suck a dick"
 
