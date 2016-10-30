@@ -1,4 +1,4 @@
-import os
+import os, sys
 import time, logging
 from slackclient import SlackClient
 import spotipy
@@ -13,7 +13,8 @@ BOT_ID = os.environ.get("BOT_ID")
 
 # constants
 AT_BOT = "<@" + BOT_ID + ">"
-PLAY = "play"
+PLAY_SONG = "play song"
+PLAY_ALBUM = "play album"
 FU = 'fuck off'
 WHY = 'why the hell'
 WAKE = 'are you awake?'
@@ -28,6 +29,14 @@ spotify = spotipy.Spotify()
 
 def process_play_command(command):
     search_string = ((command.strip()).strip('play')).split("by")
+    print "The search string we're returning is: " + str(search_string)
+    return search_string
+
+def process_album_command(command):
+    result = command.split('by')
+    album_name = result[0].split('play album')[1].strip()
+    artist_name = result[1].strip()
+    search_string = [album_name,artist_name]
     print "The search string we're returning is: " + str(search_string)
     return search_string
 
@@ -64,6 +73,23 @@ def return_song(artist,requested_track):
             response = spotify.next(tracks)
 
     return False
+
+def get_requested_album(search_list,albums):
+    try:
+        requested_album = search_list[0]
+        requested_artist = search_list[1]
+        print "The requested  album we heard was: " + unicode(search_list[0])
+        print "The requested artist we heard was: " + unicode(search_list[1])
+    except Exception as e:
+        print "Ran into the following error: " + str(e)
+        return False
+
+    
+    for album in albums:
+        if album['name'].lower() == requested_album.lower():
+            return album['external_urls']['spotify']   
+
+    return False
  
 def get_artist(name):
     results = spotify.search(q='artist:' + name, type='artist')
@@ -81,6 +107,24 @@ def get_requested_track(query):
     requested_track = query[0].strip()
     return requested_track
 
+def show_artist_albums(artist):
+    albums = []
+    results = spotify.artist_albums(artist['id'], album_type=None)
+    albums.extend(results['items'])
+    while results['next']:
+        results = spotify.next(results)
+        albums.extend(results['items'])
+    print('Total albums:', len(albums))
+    #unique = set()  # skip duplicate albums
+    #for album in albums:
+    #    name = album['name']
+    #    if not name in unique:  
+    #        print(name)
+    #        unique.add(name)
+    #        show_album_tracks(album)
+
+    return albums
+
 
 
 def handle_command(command, channel):
@@ -92,7 +136,7 @@ def handle_command(command, channel):
 
     response = "No compute."
 
-    if command.startswith(PLAY):
+    if command.startswith(PLAY_SONG):
         query = process_play_command(command)
         artist = get_artist(get_artist_name(query))
         requested_track = get_requested_track(query)
@@ -101,6 +145,26 @@ def handle_command(command, channel):
             response = "Sorry, I couldn't find that song. Huh, must be your own fault. Layer eight issue I'll assume"
         else:
             response = song_url
+
+    if command.startswith(PLAY_ALBUM):
+        search_list = process_album_command(command)
+        artist = get_artist(get_artist_name(search_list))
+        print "\n Here is the contents of the artist object: \n" + str(artist)
+        albums = show_artist_albums(artist)
+        print "\n Here is the contents of the albums object: \n" + str(albums)
+        #response = albums[i]['name']
+        #sys.exit(0)
+        album_url = get_requested_album(search_list, albums)
+        if album_url == False:
+            response = "Sorry, I couldn't find an album called " + unicode(search_list[0]) + " by the artist " + unicode(search_list[1])
+        else:
+            response = album_url
+        #song_url = return_song(artist,requested_track)
+        #if song_url == False:
+        #    response = "Sorry, I couldn't find that song. Huh, must be your own fault. Layer eight issue I'll assume"
+        #else:
+        #    response = song_url
+
     
     if command.startswith(FU):
                 response = "And fuck you, too, of course."
