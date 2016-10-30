@@ -78,6 +78,8 @@ def return_song(artist,requested_track):
     return False
 
 def get_requested_album(search_list,albums):
+    if not albums:
+        return False
     try:
         requested_album = search_list[0]
         requested_artist = search_list[1]
@@ -111,6 +113,8 @@ def get_requested_track(query):
     return requested_track
 
 def show_artist_albums(artist):
+    if artist == None:
+        return False
     albums = []
     results = spotify.artist_albums(artist['id'], album_type=None)
     albums.extend(results['items'])
