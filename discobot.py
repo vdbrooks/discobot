@@ -175,7 +175,7 @@ def handle_command(command, channel):
                 response = "development-version-1.1 on EC2" 
 
     if command.startswith(HELP):
-        response = "\"Oh help me, help me!\" I'm a little fucking baby that needs help \n\n To play a particular song use: @discobot play song_name by artist_name \n\n To play a particular album use: @discobot play album album_name by artist_name . \n\n Obviously, we're only able to play songs that actually exists in spotify\n\n"  
+        response = "\"Oh help me, help me!\" I'm a little fucking baby that needs help \n\n To play a particular song use: @discobot play song song_name by artist_name \n\n To play a particular album use: @discobot play album album_name by artist_name . \n\n Obviously, we're only able to play songs that actually exists in spotify\n\n"  
   
     if command.startswith(ASSHOLE):
                 response = "And you're a prick, so suck a dick"
