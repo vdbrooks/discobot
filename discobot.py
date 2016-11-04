@@ -1,5 +1,5 @@
 import os, sys
-import time, logging
+import time, logging, pprint
 from slackclient import SlackClient
 import spotipy
 
@@ -15,6 +15,7 @@ BOT_ID = os.environ.get("BOT_ID")
 AT_BOT = "<@" + BOT_ID + ">"
 PLAY_SONG = "play song"
 PLAY_ALBUM = "play album"
+SHOW_ALBUMS = "show albums"
 FU = 'fuck off'
 WHY = 'why the hell'
 WAKE = 'are you awake?'
@@ -41,6 +42,13 @@ def process_album_command(command):
     search_string = [album_name,artist_name]
     return search_string
 
+def process_show_albums_command(command):
+    result = command.split('by')
+    album_name = result[0].split('show albums')[1].strip()
+    artist_name = result[1].strip()
+    search_string = [album_name,artist_name]
+    return search_string
+
 def return_song(artist,requested_track):
     try:
         print "The requested track we heard was: " + unicode(requested_track)
@@ -58,13 +66,15 @@ def return_song(artist,requested_track):
             return False
         for i, item in enumerate(tracks['items']):
             try:
-                print "The value of items['name'].lower()" + unicode(item['name'].lower()) + " while the name of the requested track is " + unicode(requested_track.lower())
+                print "I found a song named: " + unicode(item['name'].title()) + ", and the user requested a song called " + unicode(requested_track.title())
             except (UnicodeEncodeError, spotipy.client.SpotifyException) as e:
                 print "Couldn't compare this song because it contained a unicode character. Fix this asshole."
                 pass
             if item['type'] == 'track' and requested_track.lower() in item['name'].lower():
-                for entry in item['artists']:
-                    if entry['id'] == artist['id']:
+                print "This is the value of item\n " + str(pprint.pprint(item))
+                for the_artist in item['artists']:
+                    print "This is the value of entry\n " + str(the_artist)
+                    if the_artist['id'] == artist['id']:
                         return item['external_urls']['spotify']
             count += 1
         if tracks['next']:
@@ -139,14 +149,17 @@ def handle_command(command, channel):
         print artist
         if artist == None:
             response = "There is no artist by the name of " + search_list[1] + "\n\n Please check your spelling and try again...dumb muther fucker"
+            post_response(response)
         else:
             requested_track = get_requested_track(search_list)
             song_url = return_song(artist,requested_track)
             print str(song_url[1])
             if song_url[1] == False:
                 response = "Sorry, I couldn't find a song called " + unicode(search_list[0]) + " by an artist named " + unicode(search_list[1]) + "\n\n We checked over " + str(song_url[0]) + " songs but no luck" + "\n\n Please check that you spelled either the artist or song name correctly"
+                post_response(response)
             else:
                 response = song_url
+                post_response(response)
 
     if command.startswith(PLAY_ALBUM):
         search_list = process_album_command(command)
@@ -157,10 +170,24 @@ def handle_command(command, channel):
             response = "Sorry, I couldn't find an album called " + unicode(search_list[0]) + " by the artist " + unicode(search_list[1]) + "\n\n please check that you spelled the album and/or artist name correctly"
         else:
             response = album_url
+            post_response(response)
+
+
+    if command.startswith(SHOW_ALBUMS):
+        search_list = process_show_albums_command(command)
+        artist = get_artist(get_artist_name(search_list))
+        albums = show_artist_albums(artist)
+        if albums == False:
+            response = "Sorry, I couldn't find an album called " + unicode(search_list[0]) + " by the artist " + unicode(search_list[1]) + "\n\n please check that you spelled the album and/or artist name correctly"
+            post_response(response)
+        else:
+            post_albums(albums)
+
 
     
     if command.startswith(FU):
                 response = "And fuck you, too, of course."
+                post_response(response)
     
     if command.startswith(WHY):
                 response = "Yeah, well, what are you going to do?"
@@ -181,8 +208,16 @@ def handle_command(command, channel):
                 response = "And you're a prick, so suck a dick"
 
     
-    slack_client.api_call("chat.postMessage", channel=channel,
-                          text=response, as_user=True)
+    #slack_client.api_call("chat.postMessage", channel=channel, as_user=True, unfurl_media=True, unfurl_links=True, text=response)
+
+def post_albums(albums):
+    for album in albums:
+        slack_client.api_call("chat.postMessage", channel=channel, text=album['name'], as_user=True)
+        time.sleep (1)
+
+def post_response(response):
+    print response + " < The response"
+    slack_client.api_call("chat.postMessage", channel=channel, as_user=True, unfurl_media=True, unfurl_links=True, text=response)
 
 
 def parse_slack_output(slack_rtm_output):
